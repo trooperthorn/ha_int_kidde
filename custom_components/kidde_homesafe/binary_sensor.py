@@ -89,6 +89,62 @@ _BINARY_SENSOR_DESCRIPTIONS = (
         name="Reset Flag",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
+    BinarySensorEntityDescription(
+        key="flt_lwbat_mb",
+        icon="mdi:battery-alert",
+        name="Main Board Low Battery Fault",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=BinarySensorDeviceClass.PROBLEM,
+    ),
+    BinarySensorEntityDescription(
+        key="flt_lwbat_wb",
+        icon="mdi:battery-alert",
+        name="Wireless Board Low Battery Fault",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=BinarySensorDeviceClass.PROBLEM,
+    ),
+    BinarySensorEntityDescription(
+        key="flt_fat_lwbat",
+        icon="mdi:battery-alert",
+        name="Fatal Low Battery Fault",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=BinarySensorDeviceClass.PROBLEM,
+    ),
+    BinarySensorEntityDescription(
+        key="flt_fat_eol",
+        icon="mdi:calendar-alert",
+        name="Fatal End of Life Fault",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=BinarySensorDeviceClass.PROBLEM,
+    ),
+    BinarySensorEntityDescription(
+        key="flt_eol",
+        icon="mdi:calendar-alert",
+        name="End of Life Fault",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=BinarySensorDeviceClass.PROBLEM,
+    ),
+    BinarySensorEntityDescription(
+        key="flt_pho",
+        icon="mdi:alert-circle",
+        name="Photoelectric Sensor Fault",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=BinarySensorDeviceClass.PROBLEM,
+    ),
+    BinarySensorEntityDescription(
+        key="flt_co",
+        icon="mdi:alert-circle",
+        name="CO Sensor Fault",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=BinarySensorDeviceClass.PROBLEM,
+    ),
+    BinarySensorEntityDescription(
+        key="flt_i2c",
+        icon="mdi:alert-circle",
+        name="I2C Bus Fault",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=BinarySensorDeviceClass.PROBLEM,
+    ),
 )
 
 _INVERSE_BINARY_SENSOR_DESCRIPTIONS = (
