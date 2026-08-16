@@ -14,13 +14,12 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
-    CONCENTRATION_PARTS_PER_BILLION,
-    CONCENTRATION_PARTS_PER_MILLION,
     PERCENTAGE,
     SIGNAL_STRENGTH_DECIBELS,
     EntityCategory,
     UnitOfElectricPotential,
     UnitOfPressure,
+    UnitOfRatio,
     UnitOfTemperature,
     UnitOfTime,
 )
@@ -118,7 +117,7 @@ _SENSOR_DESCRIPTIONS = (
         # FIX: Reverted to CO to fix the AttributeError, as CARBON_MONOXIDE is unavailable.
         device_class=SensorDeviceClass.CO,
         state_class=SensorStateClass.MEASUREMENT,
-        native_unit_of_measurement=CONCENTRATION_PARTS_PER_MILLION,
+        native_unit_of_measurement=UnitOfRatio.PARTS_PER_MILLION,
     ),
     SensorEntityDescription(
         key="batt_volt",
@@ -469,9 +468,9 @@ class KiddeSensorMeasurementEntity(KiddeEntity, SensorEntity):
             case "HPA":
                 return UnitOfPressure.PA
             case "PPB":
-                return CONCENTRATION_PARTS_PER_BILLION
+                return UnitOfRatio.PARTS_PER_BILLION
             case "PPM":
-                return CONCENTRATION_PARTS_PER_MILLION
+                return UnitOfRatio.PARTS_PER_MILLION
             case "V":
                 return UnitOfElectricPotential.VOLT
             case _:
