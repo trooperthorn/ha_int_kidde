@@ -31,12 +31,16 @@ Example raw advertisement (captured via a Home Assistant Bluetooth proxy):
 
 ## Manufacturer status payload
 
-All observed units broadcast the same payload in the idle (no alarm,
-no fault) state:
+All observed units broadcast the same payload in the idle state:
 
 ```
 02 40 02 02 01
 ```
+
+**Field-verified (2026-08-20):** this payload was confirmed against live
+alarms with fire, smoke, and carbon monoxide all inactive — it is the
+authoritative "all clear" pattern the integration's *Non-idle status*
+sensor compares against.
 
 Byte meanings are **not yet mapped** — mapping them requires captures
 taken while an alarm is testing, hushed, alarming (smoke/CO), or
