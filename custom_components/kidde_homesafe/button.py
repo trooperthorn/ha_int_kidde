@@ -6,13 +6,14 @@ import logging
 from dataclasses import dataclass
 
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
-from .coordinator import KiddeCoordinator
-from .entity import KiddeCommand, KiddeEntity
+from .api import KiddeCommand
+from .coordinator import KiddeConfigEntry
+from .entity import KiddeEntity
+
+PARALLEL_UPDATES = 1
 
 KEY_MODEL = "model"
 
@@ -50,10 +51,10 @@ _BUTTON_DESCRIPTIONS = (
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_devices: AddEntitiesCallback
+    hass: HomeAssistant, entry: KiddeConfigEntry, async_add_devices: AddEntitiesCallback
 ) -> None:
     """Set up the button platform."""
-    coordinator: KiddeCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
     sensors = []
 
     for device_id in coordinator.data.devices:

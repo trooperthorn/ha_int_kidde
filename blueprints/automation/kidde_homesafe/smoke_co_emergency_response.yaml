@@ -1,0 +1,91 @@
+blueprint:
+  name: Kidde Smoke/CO Emergency Response
+  description: >-
+    Responds to a Kidde smoke or carbon monoxide alarm with notifications
+    and optional emergency actions.
+
+    Suggested pairings with other integrations:
+
+    * **UniFi Protect** — in "Additional actions", add a
+      `camera.snapshot` or `unifiprotect.set_recording_mode` action so
+      nearby cameras start recording the moment an alarm sounds.
+
+    * **ELK-M1 security panel** — add an `alarm_control_panel` or
+      `elkm1.speak_phrase`/`elkm1.set_time` style action, or trigger an
+      ELK task, so the security system announces or reacts to the alarm.
+
+    * **Lights** — selected lights are turned on at full brightness to
+      help occupants evacuate.
+  domain: automation
+  source_url: https://github.com/trooperthorn/ha_int_kidde/blob/main/blueprints/automation/kidde_homesafe/smoke_co_emergency_response.yaml
+  input:
+    smoke_sensors:
+      name: Smoke alarm sensors
+      description: Kidde smoke alarm binary sensors to watch.
+      default: []
+      selector:
+        entity:
+          filter:
+            - domain: binary_sensor
+              device_class: smoke
+          multiple: true
+    co_sensors:
+      name: CO alarm sensors
+      description: Kidde carbon monoxide alarm binary sensors to watch.
+      default: []
+      selector:
+        entity:
+          filter:
+            - domain: binary_sensor
+              device_class: carbon_monoxide
+          multiple: true
+    evacuation_lights:
+      name: Evacuation lights (optional)
+      description: Lights to turn on at full brightness during an alarm.
+      default: []
+      selector:
+        target:
+          entity:
+            domain: light
+    notify_actions:
+      name: Notification actions
+      description: >-
+        Actions used to notify occupants (e.g. notify.mobile_app_...).
+        The variables `alarm_entity` and `alarm_type` are available.
+      default: []
+      selector:
+        action: {}
+    additional_actions:
+      name: Additional actions (optional)
+      description: >-
+        Extra actions to run — start camera recordings, trigger a
+        security panel, unlock doors, stop HVAC, etc.
+      default: []
+      selector:
+        action: {}
+mode: parallel
+max_exceeded: silent
+
+triggers:
+  - trigger: state
+    entity_id: !input smoke_sensors
+    to: "on"
+    id: smoke
+  - trigger: state
+    entity_id: !input co_sensors
+    to: "on"
+    id: carbon_monoxide
+
+variables:
+  alarm_entity: "{{ trigger.entity_id }}"
+  alarm_type: "{{ trigger.id }}"
+
+actions:
+  - parallel:
+      - sequence:
+          - action: light.turn_on
+            target: !input evacuation_lights
+            data:
+              brightness_pct: 100
+      - sequence: !input notify_actions
+      - sequence: !input additional_actions

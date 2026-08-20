@@ -12,23 +12,25 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     PERCENTAGE,
     SIGNAL_STRENGTH_DECIBELS,
+    SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
     EntityCategory,
     UnitOfElectricPotential,
     UnitOfPressure,
-    UnitOfRatio,
+    CONCENTRATION_PARTS_PER_BILLION,
+    CONCENTRATION_PARTS_PER_MILLION,
     UnitOfTemperature,
     UnitOfTime,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
-from .coordinator import KiddeCoordinator
-from .entity import KiddeEntity
+from .coordinator import KiddeBLECoordinator, KiddeConfigEntry, KiddeCoordinator
+from .entity import KiddeBLEEntity, KiddeEntity
+
+PARALLEL_UPDATES = 0
 
 KEY_MODEL = "model"
 KEY_VALUE = "value"
@@ -117,7 +119,7 @@ _SENSOR_DESCRIPTIONS = (
         # FIX: Reverted to CO to fix the AttributeError, as CARBON_MONOXIDE is unavailable.
         device_class=SensorDeviceClass.CO,
         state_class=SensorStateClass.MEASUREMENT,
-        native_unit_of_measurement=UnitOfRatio.PARTS_PER_MILLION,
+        native_unit_of_measurement=CONCENTRATION_PARTS_PER_MILLION,
     ),
     SensorEntityDescription(
         key="batt_volt",
@@ -258,11 +260,35 @@ _SENSOR_MEASUREMENT_DESCRIPTIONS = (
 )
 
 
+_BLE_SENSOR_DESCRIPTIONS = (
+    SensorEntityDescription(
+        key="rssi",
+        translation_key="rssi",
+        device_class=SensorDeviceClass.SIGNAL_STRENGTH,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    SensorEntityDescription(
+        key="status_payload",
+        translation_key="status_payload",
+        icon="mdi:hexadecimal",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+)
+
+
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_devices: AddEntitiesCallback
+    hass: HomeAssistant, entry: KiddeConfigEntry, async_add_devices: AddEntitiesCallback
 ) -> None:
     """Set up the sensor platform."""
-    coordinator: KiddeCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
+    if isinstance(coordinator, KiddeBLECoordinator):
+        async_add_devices(
+            KiddeBLESensorEntity(coordinator, description)
+            for description in _BLE_SENSOR_DESCRIPTIONS
+        )
+        return
     sensors: list[SensorEntity] = []
 
     # --- Find the entity description for 'life' once ---
@@ -468,9 +494,9 @@ class KiddeSensorMeasurementEntity(KiddeEntity, SensorEntity):
             case "HPA":
                 return UnitOfPressure.PA
             case "PPB":
-                return UnitOfRatio.PARTS_PER_BILLION
+                return CONCENTRATION_PARTS_PER_BILLION
             case "PPM":
-                return UnitOfRatio.PARTS_PER_MILLION
+                return CONCENTRATION_PARTS_PER_MILLION
             case "V":
                 return UnitOfElectricPotential.VOLT
             case _:
@@ -501,3 +527,26 @@ class KiddeSensorMeasurementEntity(KiddeEntity, SensorEntity):
                 )
             attribute_dict = {"Status": None}
         return attribute_dict
+
+
+class KiddeBLESensorEntity(KiddeBLEEntity, SensorEntity):
+    """Sensor sourced from passive BLE advertisements."""
+
+    coordinator: KiddeBLECoordinator
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle an updated advertisement."""
+        self.async_write_ha_state()
+
+    @property
+    def native_value(self) -> str | int | None:
+        """Return the native value of the sensor."""
+        advertisement = self.coordinator.advertisement
+        if advertisement is None:
+            return None
+        if self.entity_description.key == "rssi":
+            return advertisement.rssi
+        if self.entity_description.key == "status_payload":
+            return advertisement.status_payload_hex
+        return None

@@ -1,24 +1,37 @@
-"""Entity base class for Kidde HomeSafe."""
+"""Entity base classes for Kidde HomeSafe."""
 
 from __future__ import annotations
 
 import logging
+from typing import Any
 
-from homeassistant.helpers.entity import DeviceInfo, EntityDescription
+from homeassistant.components.bluetooth.passive_update_coordinator import (
+    PassiveBluetoothCoordinatorEntity,
+)
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.device_registry import CONNECTION_BLUETOOTH, DeviceInfo
+from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from kidde_homesafe import KiddeCommand
 
+from .api import KiddeClientError, KiddeCommand
 from .const import DOMAIN, MANUFACTURER
-from .coordinator import KiddeCoordinator
+from .coordinator import KiddeBLECoordinator, KiddeCoordinator
 
-# Constants for dictionary keys
 KEY_MODEL = "model"
 
 logger = logging.getLogger(__name__)
 
+MODEL_NAMES = {
+    "wifiiaqdetector": "Smoke Detector with IAQ",
+    "waterleakdetector": "Water Leak + Freeze Detector",
+    "wifidetector": "Smoke Detector",
+    "cowifidetector": "Carbon Monoxide Detector",
+    "EssWFAC": "Smoke + CO Alarm (AC)",
+}
+
 
 class KiddeEntity(CoordinatorEntity[KiddeCoordinator]):
-    """Entity base class."""
+    """Entity base class for cloud-connected Kidde devices."""
 
     _attr_has_entity_name = True
 
@@ -34,13 +47,23 @@ class KiddeEntity(CoordinatorEntity[KiddeCoordinator]):
         self.entity_description = entity_description
 
     @property
-    def kidde_device(self) -> dict:
+    def kidde_device(self) -> dict[str, Any]:
         """The device from the coordinator's data."""
         return self.coordinator.data.devices[self.device_id]
 
     @property
+    def available(self) -> bool:
+        """Return whether the device is still present in the dataset."""
+        return (
+            super().available
+            and self.coordinator.data is not None
+            and self.coordinator.data.devices is not None
+            and self.device_id in self.coordinator.data.devices
+        )
+
+    @property
     def unique_id(self) -> str:
-        """Return the unique id of the device."""
+        """Return the unique id of the entity."""
         return f"{self.kidde_device['label']}_{self.entity_description.key}"
 
     @property
@@ -48,24 +71,16 @@ class KiddeEntity(CoordinatorEntity[KiddeCoordinator]):
         """Return the device information of the device."""
         device = self.kidde_device
 
-        model_type = device.get(KEY_MODEL, None)
-        model_string = ""
-        match model_type:
-            case "wifiiaqdetector":
-                model_string = f"Smoke Detector with IAQ ({model_type})"
-            case "waterleakdetector":
-                model_string = f"Water Leak + Freeze Detector ({model_type})"
-            case "wifidetector":
-                model_string = f"Smoke Detector ({model_type})"
-            case "cowifidetector":
-                model_string = f"Carbon Monoxide Detector ({model_type})"
-            case _:
-                model_string = f"{model_type}"
-                if logger.isEnabledFor(logging.DEBUG):
-                    logger.warning(
-                        "Unverified Kidde Device Model: [%s] ... Please send Kidde device data to maintainers.",
-                        model_type,
-                    )
+        model_type = device.get(KEY_MODEL)
+        if model_type in MODEL_NAMES:
+            model_string = f"{MODEL_NAMES[model_type]} ({model_type})"
+        else:
+            model_string = f"{model_type}"
+            logger.debug(
+                "Unverified Kidde device model: [%s] - please report the "
+                "device data to the integration maintainers",
+                model_type,
+            )
 
         return DeviceInfo(
             identifiers={(DOMAIN, device["label"])},
@@ -81,4 +96,39 @@ class KiddeEntity(CoordinatorEntity[KiddeCoordinator]):
         """Send a Kidde command for this device."""
         client = self.coordinator.client
         device = self.kidde_device
-        await client.device_command(device["location_id"], device["id"], command)
+        try:
+            await client.device_command(device["location_id"], device["id"], command)
+        except KiddeClientError as err:
+            raise HomeAssistantError(
+                f"Failed to send {command} to {device.get('label')}: {err}"
+            ) from err
+        await self.coordinator.async_request_refresh()
+
+
+class KiddeBLEEntity(PassiveBluetoothCoordinatorEntity[KiddeBLECoordinator]):
+    """Entity base class for locally (BLE) monitored Kidde alarms."""
+
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: KiddeBLECoordinator,
+        entity_description: EntityDescription,
+    ) -> None:
+        """Initialize."""
+        super().__init__(coordinator)
+        self.entity_description = entity_description
+        address = coordinator.address
+        advertisement = coordinator.advertisement
+        self._attr_unique_id = f"{address}_{entity_description.key}"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, address)},
+            connections={(CONNECTION_BLUETOOTH, address)},
+            name=(advertisement.local_name if advertisement else None)
+            or f"Kidde Alarm {address[-5:].replace(':', '')}",
+            manufacturer=MANUFACTURER,
+            model="Wireless-interconnect Smoke/CO Alarm (Bluetooth)",
+            serial_number=(
+                advertisement.serial_number if advertisement else None
+            ),
+        )

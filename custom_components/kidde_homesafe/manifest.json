@@ -1,16 +1,30 @@
 {
   "domain": "kidde_homesafe",
-  "name": "Kidde-HomeSafe",
+  "name": "Kidde HomeSafe",
+  "bluetooth": [
+    {
+      "manufacturer_id": 3201,
+      "connectable": false
+    },
+    {
+      "local_name": "KIDDE*",
+      "connectable": false
+    }
+  ],
   "codeowners": [
-    "@snell-evan-itt"
+    "@trooperthorn"
   ],
   "config_flow": true,
-  "documentation": "https://github.com/snell-evan-itt/Kidde-HomeSafe",
+  "dependencies": [
+    "bluetooth_adapters"
+  ],
+  "documentation": "https://github.com/trooperthorn/ha_int_kidde",
   "integration_type": "hub",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/snell-evan-itt/Kidde-HomeSafe/issues",
-  "requirements": [
-    "kidde-homesafe"
+  "issue_tracker": "https://github.com/trooperthorn/ha_int_kidde/issues",
+  "loggers": [
+    "custom_components.kidde_homesafe"
   ],
-  "version": "0.0.0"
+  "requirements": [],
+  "version": "1.0.0"
 }
