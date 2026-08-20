@@ -1,21 +1,106 @@
 {
   "config": {
+    "flow_title": "{name}",
     "step": {
       "user": {
+        "title": "Add Kidde HomeSafe",
+        "menu_options": {
+          "cloud": "Kidde HomeSafe account (cloud)",
+          "pick_bluetooth": "Bluetooth alarm (local)"
+        }
+      },
+      "cloud": {
+        "title": "Kidde HomeSafe account",
+        "description": "Sign in with the account used in the Kidde app. The polling interval can be changed later under the integration's options.",
         "data": {
-          "email": "[%key:common::config_flow::data::email%]",
-          "password": "[%key:common::config_flow::data::password%]",
-          "update_interval_seconds": "[%key:common::config_flow::data::update_interval_seconds%]"
+          "email": "Email",
+          "password": "Password"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate Kidde HomeSafe",
+        "description": "The Kidde cloud rejected the stored session. Enter your credentials to sign in again.",
+        "data": {
+          "email": "Email",
+          "password": "Password"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Kidde HomeSafe",
+        "description": "Update the account credentials used to poll the Kidde cloud.",
+        "data": {
+          "email": "Email",
+          "password": "Password"
+        }
+      },
+      "bluetooth_confirm": {
+        "title": "Discovered Kidde alarm",
+        "description": "Add {name}? It will be monitored locally through Bluetooth advertisements (no cloud connection required)."
+      },
+      "pick_bluetooth": {
+        "title": "Select a Kidde alarm",
+        "description": "Kidde alarms discovered over Bluetooth. Alarms already added are not listed.",
+        "data": {
+          "address": "Alarm"
         }
       }
     },
     "error": {
-      "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
-      "unknown": "[%key:common::config_flow::error::unknown%]",
-      "invalid_update_interval": "[%key:common::config_flow::error::invalid_update_interval%]"
+      "invalid_auth": "Invalid authentication",
+      "cannot_connect": "Failed to connect",
+      "unknown": "Unexpected error"
     },
     "abort": {
-      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
+      "already_configured": "Device is already configured",
+      "already_in_progress": "Configuration flow is already in progress",
+      "no_devices_found": "No unconfigured Kidde alarms were found over Bluetooth. Make sure a Bluetooth adapter or Bluetooth proxy is in range of the alarm.",
+      "nothing_to_reconfigure": "Bluetooth alarms have nothing to reconfigure. Remove and re-add the entry to change the tracked alarm.",
+      "reauth_successful": "Re-authentication was successful",
+      "reconfigure_successful": "Re-configuration was successful",
+      "wrong_account": "The credentials belong to a different Kidde account than this entry."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Kidde HomeSafe options",
+        "data": {
+          "update_interval": "Cloud polling interval (seconds)"
+        },
+        "data_description": {
+          "update_interval": "How often to poll the Kidde cloud. Lower values reduce the delay between a device event and Home Assistant seeing it, at the cost of more API traffic."
+        }
+      }
+    },
+    "abort": {
+      "nothing_to_configure": "Bluetooth alarms update passively from advertisements and have no options."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "rssi": {
+        "name": "Bluetooth signal strength"
+      },
+      "status_payload": {
+        "name": "Status payload"
+      }
+    },
+    "binary_sensor": {
+      "non_idle_status": {
+        "name": "Non-idle status"
+      }
+    },
+    "event": {
+      "ble_status": {
+        "name": "Status broadcast",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "status_changed": "Status changed"
+            }
+          }
+        }
+      }
     }
   }
 }

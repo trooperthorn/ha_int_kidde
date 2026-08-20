@@ -7,13 +7,14 @@ from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
-from .coordinator import KiddeCoordinator
-from .entity import KiddeCommand, KiddeEntity
+from .api import KiddeCommand
+from .coordinator import KiddeConfigEntry
+from .entity import KiddeEntity
+
+PARALLEL_UPDATES = 1
 
 KEY_MODEL = "model"
 
@@ -47,10 +48,10 @@ _SWITCH_DESCRIPTIONS = (
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_devices: AddEntitiesCallback
+    hass: HomeAssistant, entry: KiddeConfigEntry, async_add_devices: AddEntitiesCallback
 ) -> None:
     """Set up the switch platform."""
-    coordinator: KiddeCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
     switches: list[SwitchEntity] = []
 
     for device_id, device_data in coordinator.data.devices.items():

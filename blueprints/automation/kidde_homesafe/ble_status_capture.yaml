@@ -1,0 +1,55 @@
+blueprint:
+  name: Kidde BLE Status Capture
+  description: >-
+    Notifies you whenever a locally monitored (Bluetooth) Kidde alarm
+    broadcasts a status payload different from its previous one, and
+    records the payload in a persistent notification.
+
+    Besides acting as a fast local alert channel, the captured payloads
+    help map Kidde's undocumented BLE protocol — please consider
+    reporting non-idle payloads (and what the alarm was doing) at
+    https://github.com/trooperthorn/ha_int_kidde/issues.
+  domain: automation
+  source_url: https://github.com/trooperthorn/ha_int_kidde/blob/main/blueprints/automation/kidde_homesafe/ble_status_capture.yaml
+  input:
+    status_events:
+      name: Status broadcast event entities
+      description: The "Status broadcast" event entities of your Kidde alarms.
+      selector:
+        entity:
+          filter:
+            - domain: event
+              integration: kidde_homesafe
+          multiple: true
+    notify_actions:
+      name: Notification actions (optional)
+      description: >-
+        Actions used to notify you. The variables `payload`,
+        `previous_payload` and `source_entity` are available.
+      default: []
+      selector:
+        action: {}
+mode: queued
+max: 25
+
+triggers:
+  - trigger: state
+    entity_id: !input status_events
+
+conditions:
+  - condition: template
+    value_template: "{{ trigger.to_state is not none and trigger.from_state is not none and trigger.to_state.state not in ('unknown', 'unavailable') }}"
+
+variables:
+  source_entity: "{{ trigger.entity_id }}"
+  payload: "{{ trigger.to_state.attributes.get('payload') }}"
+  previous_payload: "{{ trigger.to_state.attributes.get('previous_payload') }}"
+
+actions:
+  - action: persistent_notification.create
+    data:
+      title: "Kidde alarm status change"
+      message: >-
+        {{ source_entity }} broadcast payload {{ payload }}
+        (was {{ previous_payload }}) at {{ now().isoformat() }}.
+  - sequence: !input notify_actions
