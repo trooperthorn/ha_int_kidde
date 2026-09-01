@@ -9,14 +9,16 @@ alarms — with **two connection paths**:
 | Path | Devices | Data | Latency |
 | ---- | ------- | ---- | ------- |
 | **Cloud** (Kidde HomeSafe account) | WiFi "smart" models | Full: smoke/CO alarm state, IAQ, battery, faults, test/hush/identify commands | Polling (configurable, default 30 s, min 5 s) |
-| **Local Bluetooth** (new) | BLE wireless-interconnect alarms (`KIDDE SMOKE CO`) | Identity, presence, signal strength, live status payload | Push — 1–3 s, fully local, works via ESPHome/Shelly Bluetooth proxies |
+| **Local Bluetooth** (experimental) | Verified `KIDDE SMOKE CO` fingerprint | Presence, signal strength, identity correlation, raw unmapped protocol payload | Push, fully local; payload changes are diagnostic only |
+| **Local Wi-Fi/LAN** (research) | Owner-identified 30CUAR-W installation | No operational properties mapped yet | Ayla Local Connect feasibility under investigation |
 
-> [!NOTE]
-> Kidde offers **no local IP/LAN API** — the WiFi models speak only to the
-> Kidde cloud. Local Bluetooth monitoring is the only cloud-free channel,
-> and this integration consumes it passively (no connections, no battery
-> impact on the alarms). See [docs/BLE_PROTOCOL.md](docs/BLE_PROTOCOL.md)
-> for the protocol details and how you can help map the remaining bytes.
+> [!IMPORTANT]
+> Kidde publishes no LAN API for these alarms, but that does not prove one is
+> absent. The installed 30CUAR-W units exposed no unauthenticated idle listener,
+> and an app Ping produced no direct IPv4 phone-to-alarm traffic in an AP-level
+> capture. Ayla documents optional authenticated Local Connect support, so LAN
+> enrollment, key exchange, property reads, and WAN-loss behavior remain an
+> active research track. See [docs/BLE_PROTOCOL.md](docs/BLE_PROTOCOL.md).
 
 ## Supported devices
 
@@ -30,10 +32,11 @@ Cloud (verified unless noted):
 - CO Alarm with Indoor Air Quality Monitor (**KN-COP-DP-10YL-AQ-WF**)
 - Kidde DETECT™ Series Alarms (**30CUAR-W, 20SAR-W**)
 
-Local Bluetooth:
+Local Bluetooth (experimental):
 
-- Wireless-interconnect BLE smoke/CO alarms advertising as
-  `KIDDE SMOKE CO` (e.g. the P4010ACS/DCS wire-free interconnect family)
+- Devices matching the verified `KIDDE SMOKE CO`, Kidde manufacturer-data,
+  and identity-frame fingerprint. The installed test units are owner-identified
+  30CUAR-W alarms; the advertised name alone does not prove a printed model.
 
 ## Installation (HACS)
 
@@ -66,11 +69,14 @@ Each alarm provides:
 
 - **Bluetooth signal strength** (RSSI) sensor
 - **Status payload** diagnostic sensor (live hex broadcast)
-- **Non-idle status** problem sensor — on when the alarm broadcasts
-  anything other than its known idle pattern
-- **Status broadcast** event entity — fires within seconds of any
-  payload change, ideal for automations
-- Device identity: serial number, MAC, System ID — decoded locally
+- **Status broadcast** diagnostic event — fires on a raw payload change for
+  protocol capture; it is not a smoke, CO, or fault signal
+- Locally correlated identity; exported diagnostics redact serial, MAC, and
+  System ID values
+
+The advertisement payload `0240020201` and GATT `0x1D02` value `00` are
+verified idle fixtures across three installed alarms. Other values remain
+unmapped and do not create alarm/problem entities.
 
 ## Entities (cloud)
 
@@ -88,9 +94,9 @@ Importable automation blueprints ship with the repository:
   The extra-actions hook is designed for pairing with other
   integrations, e.g. **UniFi Protect** (`camera.snapshot`, recording
   mode) or an **ELK-M1** panel (announcements, tasks).
-- [BLE Status Capture](blueprints/automation/kidde_homesafe/ble_status_capture.yaml)
-  — get notified the moment a Bluetooth alarm changes its broadcast, and
-  help map the protocol.
+- [BLE Protocol Capture](blueprints/automation/kidde_homesafe/ble_status_capture.yaml)
+  — record an unmapped Bluetooth payload change for controlled protocol
+  research. Do not use it for life-safety notification.
 
 Import via **Settings → Automations & Scenes → Blueprints → Import
 Blueprint** using the raw GitHub URL of the blueprint file.
@@ -106,6 +112,14 @@ Blueprint** using the raw GitHub URL of the blueprint file.
     logs:
       custom_components.kidde_homesafe: debug
   ```
+
+## Local-first development status
+
+Phase 0 foundations now include exact BLE fingerprinting, deterministic
+capture redaction, embedded BLE/LAN identity correlation, and a canonical
+field model carrying source, timestamp, freshness, and confidence. Transport
+adapters must produce that model rather than creating entities directly. Raw
+or provisional protocol bytes are never eligible for smoke/CO entities.
 
 ## Credits
 

@@ -28,6 +28,7 @@ from .api import (
 )
 from .ble import KiddeBLEAdvertisement, parse_service_info
 from .const import CLOUD_TIMEOUT, DOMAIN
+from .identity import diagnostic_token
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -130,14 +131,13 @@ class KiddeBLECoordinator(PassiveBluetoothDataUpdateCoordinator):
             and current is not None
             and previous.status_payload != current.status_payload
         ):
-            _LOGGER.warning(
+            _LOGGER.info(
                 (
-                    "Kidde alarm %s status payload changed from %s to %s - "
-                    "please report this capture (with what the alarm was "
-                    "doing at the time) to the integration issue tracker to "
-                    "help map the BLE protocol"
+                    "Unmapped Kidde BLE payload changed for device token %s "
+                    "from %s to %s; this is diagnostic protocol data, not a "
+                    "verified alarm or fault"
                 ),
-                service_info.address,
+                diagnostic_token(service_info.address),
                 previous.status_payload_hex,
                 current.status_payload_hex,
             )

@@ -30,7 +30,6 @@ CLOUD_PLATFORMS: list[Platform] = [
 ]
 
 BLE_PLATFORMS: list[Platform] = [
-    Platform.BINARY_SENSOR,
     Platform.EVENT,
     Platform.SENSOR,
 ]

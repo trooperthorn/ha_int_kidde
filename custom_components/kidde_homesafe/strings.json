@@ -54,6 +54,7 @@
       "already_configured": "Device is already configured",
       "already_in_progress": "Configuration flow is already in progress",
       "no_devices_found": "No unconfigured Kidde alarms were found over Bluetooth. Make sure a Bluetooth adapter or Bluetooth proxy is in range of the alarm.",
+      "unsupported_bluetooth_fingerprint": "The Bluetooth advertisement did not match the verified Kidde Smoke/CO fingerprint.",
       "nothing_to_reconfigure": "Bluetooth alarms have nothing to reconfigure. Remove and re-add the entry to change the tracked alarm.",
       "reauth_successful": "Re-authentication was successful",
       "reconfigure_successful": "Re-configuration was successful",
@@ -83,11 +84,6 @@
       },
       "status_payload": {
         "name": "Status payload"
-      }
-    },
-    "binary_sensor": {
-      "non_idle_status": {
-        "name": "Non-idle status"
       }
     },
     "event": {

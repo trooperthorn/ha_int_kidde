@@ -550,3 +550,20 @@ class KiddeBLESensorEntity(KiddeBLEEntity, SensorEntity):
         if self.entity_description.key == "status_payload":
             return advertisement.status_payload_hex
         return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, str | bool] | None:
+        """Expose confidence metadata without assigning alarm semantics."""
+        if self.entity_description.key != "status_payload":
+            return None
+        advertisement = self.coordinator.advertisement
+        if advertisement is None:
+            return None
+        return {
+            "classification": advertisement.status_payload_classification,
+            "fingerprint_verified": advertisement.fingerprint_verified,
+            "identity_correlation_verified": (
+                advertisement.identity_correlation_verified
+            ),
+            "semantics": "unmapped",
+        }

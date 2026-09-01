@@ -32,11 +32,10 @@ async def async_setup_entry(
 
 
 class KiddeBLEEventEntity(KiddeBLEEntity, EventEntity):
-    """Fires an event whenever the advertised status payload changes.
+    """Expose payload changes for protocol research only.
 
-    Attach an automation to this entity to be notified the moment the
-    alarm starts broadcasting something other than its previous state —
-    typically within a couple of seconds of the physical event.
+    Payload semantics are unmapped. This event must not be used as a smoke,
+    CO, fault, or life-safety signal.
     """
 
     coordinator: KiddeBLECoordinator

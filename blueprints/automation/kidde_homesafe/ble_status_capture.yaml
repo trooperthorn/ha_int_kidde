@@ -1,14 +1,11 @@
 blueprint:
-  name: Kidde BLE Status Capture
+  name: Kidde BLE Protocol Capture
   description: >-
-    Notifies you whenever a locally monitored (Bluetooth) Kidde alarm
-    broadcasts a status payload different from its previous one, and
-    records the payload in a persistent notification.
+    Records a diagnostic event when a locally monitored Kidde alarm changes
+    its unmapped Bluetooth manufacturer payload. This is a protocol-research
+    tool, not a smoke, CO, fault, or life-safety notification path.
 
-    Besides acting as a fast local alert channel, the captured payloads
-    help map Kidde's undocumented BLE protocol — please consider
-    reporting non-idle payloads (and what the alarm was doing) at
-    https://github.com/trooperthorn/ha_int_kidde/issues.
+    Redact device identifiers and location details before sharing captures.
   domain: automation
   source_url: https://github.com/trooperthorn/ha_int_kidde/blob/main/blueprints/automation/kidde_homesafe/ble_status_capture.yaml
   input:
@@ -22,7 +19,7 @@ blueprint:
               integration: kidde_homesafe
           multiple: true
     notify_actions:
-      name: Notification actions (optional)
+      name: Diagnostic capture actions (optional)
       description: >-
         Actions used to notify you. The variables `payload`,
         `previous_payload` and `source_entity` are available.
@@ -48,8 +45,9 @@ variables:
 actions:
   - action: persistent_notification.create
     data:
-      title: "Kidde alarm status change"
+      title: "Unmapped Kidde BLE payload change"
       message: >-
         {{ source_entity }} broadcast payload {{ payload }}
-        (was {{ previous_payload }}) at {{ now().isoformat() }}.
+        (was {{ previous_payload }}) at {{ now().isoformat() }}. This raw
+        payload has no verified smoke, CO, or fault meaning.
   - sequence: !input notify_actions
