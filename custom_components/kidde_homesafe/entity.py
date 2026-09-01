@@ -16,6 +16,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .api import KiddeClientError, KiddeCommand
 from .const import DOMAIN, MANUFACTURER
 from .coordinator import KiddeBLECoordinator, KiddeCoordinator
+from .identity import KiddeIdentity, friendly_ble_name
 
 KEY_MODEL = "model"
 
@@ -120,14 +121,28 @@ class KiddeBLEEntity(PassiveBluetoothCoordinatorEntity[KiddeBLECoordinator]):
         self.entity_description = entity_description
         address = coordinator.address
         advertisement = coordinator.advertisement
+        identity = KiddeIdentity(
+            advertised_address=address,
+            serial_number=(
+                advertisement.serial_number if advertisement else None
+            ),
+            system_id=advertisement.system_id if advertisement else None,
+        )
+        try:
+            stable_id = identity.stable_local_id
+            name = friendly_ble_name(address)
+        except ValueError:
+            stable_id = address
+            name = "Kidde Smoke/CO"
+        # Preserve existing entity unique IDs while adding the stable embedded
+        # identifier to the device registry for cross-transport correlation.
         self._attr_unique_id = f"{address}_{entity_description.key}"
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, address)},
+            identifiers={(DOMAIN, address), (DOMAIN, stable_id)},
             connections={(CONNECTION_BLUETOOTH, address)},
-            name=(advertisement.local_name if advertisement else None)
-            or f"Kidde Alarm {address[-5:].replace(':', '')}",
+            name=name,
             manufacturer=MANUFACTURER,
-            model="Wireless-interconnect Smoke/CO Alarm (Bluetooth)",
+            model="Smoke/CO alarm (exact model not encoded in BLE)",
             serial_number=(
                 advertisement.serial_number if advertisement else None
             ),

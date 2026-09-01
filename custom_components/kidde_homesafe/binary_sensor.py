@@ -10,11 +10,11 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntityDescription,
 )
 from homeassistant.const import EntityCategory
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .coordinator import KiddeBLECoordinator, KiddeConfigEntry
-from .entity import KiddeBLEEntity, KiddeEntity
+from .coordinator import KiddeConfigEntry
+from .entity import KiddeEntity
 
 PARALLEL_UPDATES = 0
 
@@ -164,27 +164,11 @@ _BATTERY_SENSOR_DESCRIPTIONS = (
 )
 
 
-_BLE_BINARY_SENSOR_DESCRIPTIONS = (
-    BinarySensorEntityDescription(
-        key="non_idle_status",
-        translation_key="non_idle_status",
-        device_class=BinarySensorDeviceClass.PROBLEM,
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-)
-
-
 async def async_setup_entry(
     hass: HomeAssistant, entry: KiddeConfigEntry, async_add_devices: AddEntitiesCallback
 ) -> None:
     """Set up the binary sensor platform."""
     coordinator = entry.runtime_data
-    if isinstance(coordinator, KiddeBLECoordinator):
-        async_add_devices(
-            KiddeBLEBinarySensorEntity(coordinator, description)
-            for description in _BLE_BINARY_SENSOR_DESCRIPTIONS
-        )
-        return
     sensors: list[BinarySensorEntity] = []
 
     for device_id, device_data in coordinator.data.devices.items():
@@ -244,27 +228,3 @@ class KiddeBatteryStateSensorEntity(KiddeEntity, BinarySensorEntity):
     def is_on(self) -> bool | None:
         """Return the value of the binary sensor."""
         return self.kidde_device.get(self.entity_description.key) not in ("Good", "ok")
-
-
-class KiddeBLEBinarySensorEntity(KiddeBLEEntity, BinarySensorEntity):
-    """Binary sensor sourced from passive BLE advertisements.
-
-    Reports a problem when the alarm's advertised status payload deviates
-    from the known idle pattern. The exact meaning of non-idle payloads is
-    still being mapped; see docs/BLE_PROTOCOL.md.
-    """
-
-    coordinator: KiddeBLECoordinator
-
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle an updated advertisement."""
-        self.async_write_ha_state()
-
-    @property
-    def is_on(self) -> bool | None:
-        """Return True when the status payload is not the idle pattern."""
-        advertisement = self.coordinator.advertisement
-        if advertisement is None or advertisement.is_idle_payload is None:
-            return None
-        return not advertisement.is_idle_payload

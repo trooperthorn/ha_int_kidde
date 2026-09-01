@@ -38,6 +38,7 @@ from .const import (
     MAX_UPDATE_INTERVAL,
     MIN_UPDATE_INTERVAL,
 )
+from .identity import KiddeIdentity, friendly_ble_name
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -50,12 +51,26 @@ STEP_CLOUD_DATA_SCHEMA = vol.Schema(
 
 
 def _format_ble_title(service_info: BluetoothServiceInfoBleak) -> str:
-    """Build a friendly title for a discovered BLE alarm."""
+    """Build a distinguishable title without exposing full identifiers."""
+    try:
+        return friendly_ble_name(service_info.address)
+    except ValueError:
+        return "Kidde Smoke/CO"
+
+
+def _ble_unique_id(service_info: BluetoothServiceInfoBleak) -> str:
+    """Prefer embedded identity over scanner-specific advertiser addresses."""
     parsed = parse_service_info(service_info)
-    name = (service_info.name or "Kidde Alarm").title()
-    if parsed and parsed.serial_number:
-        return f"{name} ({parsed.serial_number})"
-    return f"{name} ({service_info.address})"
+    if parsed is None:
+        return service_info.address
+    try:
+        return KiddeIdentity(
+            advertised_address=parsed.address,
+            serial_number=parsed.serial_number,
+            system_id=parsed.system_id,
+        ).stable_local_id
+    except ValueError:
+        return service_info.address
 
 
 class KiddeConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -210,7 +225,15 @@ class KiddeConfigFlow(ConfigFlow, domain=DOMAIN):
         self, discovery_info: BluetoothServiceInfoBleak
     ) -> ConfigFlowResult:
         """Handle a Kidde alarm discovered via Bluetooth."""
-        await self.async_set_unique_id(discovery_info.address)
+        parsed = parse_service_info(discovery_info)
+        if parsed is None or not parsed.fingerprint_verified:
+            return self.async_abort(reason="unsupported_bluetooth_fingerprint")
+        if any(
+            entry.data.get(CONF_ADDRESS) == discovery_info.address
+            for entry in self._async_current_entries()
+        ):
+            return self.async_abort(reason="already_configured")
+        await self.async_set_unique_id(_ble_unique_id(discovery_info))
         self._abort_if_unique_id_configured()
         self._discovery_info = discovery_info
         self.context["title_placeholders"] = {
@@ -242,22 +265,33 @@ class KiddeConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Let the user pick from already-discovered Kidde alarms."""
-        current_addresses = self._async_current_ids(include_ignore=False)
+        current_ids = self._async_current_ids(include_ignore=False)
+        current_addresses = {
+            entry.data.get(CONF_ADDRESS)
+            for entry in self._async_current_entries()
+            if entry.data.get(CONF_CONNECTION_TYPE) == CONNECTION_TYPE_BLUETOOTH
+        }
         discovered: dict[str, BluetoothServiceInfoBleak] = {}
         for service_info in async_discovered_service_info(
             self.hass, connectable=False
         ):
-            if service_info.address in current_addresses:
-                continue
             parsed = parse_service_info(service_info)
-            if parsed is not None:
-                discovered[service_info.address] = service_info
+            if (
+                service_info.address in current_addresses
+                or parsed is None
+                or not parsed.fingerprint_verified
+                or _ble_unique_id(service_info) in current_ids
+            ):
+                continue
+            discovered[service_info.address] = service_info
 
         if user_input is not None:
             address = user_input[CONF_ADDRESS]
             if (service_info := discovered.get(address)) is None:
                 return self.async_abort(reason="no_devices_found")
-            await self.async_set_unique_id(address, raise_on_progress=False)
+            await self.async_set_unique_id(
+                _ble_unique_id(service_info), raise_on_progress=False
+            )
             self._abort_if_unique_id_configured()
             return self.async_create_entry(
                 title=_format_ble_title(service_info),

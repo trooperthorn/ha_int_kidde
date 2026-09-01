@@ -30,36 +30,33 @@ _spec.loader.exec_module(ble)
 DIS_UUID = "0000180a-0000-1000-8000-00805f9b34fb"
 SYSTEM_ID_UUID = "00002a23-0000-1000-8000-00805f9b34fb"
 
-# Real captures from Kidde "KIDDE SMOKE CO" alarms via a Home Assistant
-# Bluetooth proxy (idle state).
-REAL_CAPTURES = [
-    ("84:07:C4:3C:3A:35", "343032343330314132413132424146", "8407c43c3a34", "4024301A2A12BAF", "84:07:C4:3C:3A:34"),
-    ("84:07:C4:3C:3A:A7", "343032343330313832413132413230", "8407c43c3aa6", "402430182A12A20", "84:07:C4:3C:3A:A6"),
-    ("84:07:C4:3C:25:6B", "343032343330313232384242413244", "8407c43c256a", "4024301228BBA2D", "84:07:C4:3C:25:6A"),
-    ("84:07:C4:3C:41:AD", "343032343330313632413439363342", "8407c43c41ac", "402430162A4963B", "84:07:C4:3C:41:AC"),
+# Synthetic/redacted fixtures preserving the verified identity relationship.
+CAPTURES = [
+    ("84:07:C4:00:00:11", "TESTCAPTURE0001", "84:07:C4:00:00:10"),
+    ("84:07:C4:00:00:21", "TESTCAPTURE0002", "84:07:C4:00:00:20"),
+    ("84:07:C4:00:00:31", "TESTCAPTURE0003", "84:07:C4:00:00:30"),
+    ("84:07:C4:00:00:41", "TESTCAPTURE0004", "84:07:C4:00:00:40"),
 ]
 
 
 @pytest.mark.parametrize(
-    ("address", "dis_hex", "sysid_hex", "expected_serial", "expected_sysid"),
-    REAL_CAPTURES,
+    ("address", "expected_serial", "expected_sysid"),
+    CAPTURES,
 )
-def test_parse_real_capture(
+def test_parse_verified_capture_shape(
     address: str,
-    dis_hex: str,
-    sysid_hex: str,
     expected_serial: str,
     expected_sysid: str,
 ) -> None:
-    """Parse real advertisements captured from live alarms."""
+    """Parse a redacted fixture matching the verified advertisement shape."""
     adv = ble.parse_advertisement(
         address=address,
         local_name="KIDDE SMOKE CO",
         rssi=-50,
         manufacturer_data={3201: bytes.fromhex("0240020201")},
         service_data={
-            DIS_UUID: bytes.fromhex(dis_hex),
-            SYSTEM_ID_UUID: bytes.fromhex(sysid_hex),
+            DIS_UUID: expected_serial.encode("ascii"),
+            SYSTEM_ID_UUID: bytes.fromhex(expected_sysid.replace(":", "")),
         },
     )
     assert adv is not None
@@ -67,6 +64,9 @@ def test_parse_real_capture(
     assert adv.system_id == expected_sysid
     assert adv.status_payload_hex == "0240020201"
     assert adv.is_idle_payload is True
+    assert adv.status_payload_classification == "verified_idle_fixture"
+    assert adv.fingerprint_verified is True
+    assert adv.identity_correlation_verified is True
     assert adv.rssi == -50
 
 
@@ -87,7 +87,7 @@ def test_non_kidde_advertisement_rejected() -> None:
 def test_name_only_advertisement_accepted() -> None:
     """A Kidde-named advertisement without manufacturer data still parses."""
     adv = ble.parse_advertisement(
-        address="84:07:C4:3C:3A:35",
+        address="84:07:C4:00:00:11",
         local_name="KIDDE SMOKE CO",
         rssi=-60,
         manufacturer_data={},
@@ -96,12 +96,13 @@ def test_name_only_advertisement_accepted() -> None:
     assert adv is not None
     assert adv.status_payload is None
     assert adv.is_idle_payload is None
+    assert adv.fingerprint_verified is False
 
 
 def test_non_idle_payload_flagged() -> None:
-    """A payload differing from the idle pattern is flagged non-idle."""
+    """A differing payload remains explicitly unmapped, not a problem."""
     adv = ble.parse_advertisement(
-        address="84:07:C4:3C:3A:35",
+        address="84:07:C4:00:00:11",
         local_name="KIDDE SMOKE CO",
         rssi=-60,
         manufacturer_data={3201: bytes.fromhex("0240020203")},
@@ -109,12 +110,37 @@ def test_non_idle_payload_flagged() -> None:
     )
     assert adv is not None
     assert adv.is_idle_payload is False
+    assert adv.status_payload_classification == "unmapped"
+
+
+def test_broad_kidde_name_without_verified_oui_rejected() -> None:
+    """Do not claim unrelated Kidde product families from broad filters."""
+    assert ble.parse_advertisement(
+        address="00:11:22:33:44:55",
+        local_name="KIDDE OTHER",
+        rssi=-60,
+        manufacturer_data={3201: bytes.fromhex("0240020201")},
+        service_data={},
+    ) is None
+
+
+def test_fragment_with_verified_oui_and_manufacturer_is_provisional() -> None:
+    """Allow merged advertisement fragments without calling them verified."""
+    adv = ble.parse_advertisement(
+        address="84:07:C4:00:00:11",
+        local_name=None,
+        rssi=-60,
+        manufacturer_data={3201: bytes.fromhex("0240020201")},
+        service_data={},
+    )
+    assert adv is not None
+    assert adv.fingerprint_verified is False
 
 
 def test_undecodable_serial_returns_none() -> None:
     """Binary garbage in the DIS service data must not crash the parser."""
     adv = ble.parse_advertisement(
-        address="84:07:C4:3C:3A:35",
+        address="84:07:C4:00:00:11",
         local_name="KIDDE SMOKE CO",
         rssi=-60,
         manufacturer_data={3201: bytes.fromhex("0240020201")},

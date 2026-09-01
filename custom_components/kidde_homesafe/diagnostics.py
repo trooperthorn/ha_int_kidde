@@ -9,11 +9,13 @@ from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.core import HomeAssistant
 
 from .coordinator import KiddeBLECoordinator, KiddeConfigEntry
+from .ble import DEVICE_INFORMATION_SERVICE_UUID, SYSTEM_ID_UUID
 
 TO_REDACT = {
     "cookies",
     "email",
     "serial_number",
+    "system_id",
     "ssid",
     "address",
     "address1",
@@ -30,6 +32,19 @@ TO_REDACT = {
     "wifi_mac",
     "mac",
 }
+
+_IDENTITY_SERVICE_UUIDS = {
+    DEVICE_INFORMATION_SERVICE_UUID,
+    SYSTEM_ID_UUID,
+}
+
+
+def _redacted_service_data(service_data: dict[str, bytes]) -> dict[str, str]:
+    """Keep protocol shape while removing serial and System-ID payloads."""
+    return {
+        uuid: "**REDACTED**" if uuid.lower() in _IDENTITY_SERVICE_UUIDS else data.hex()
+        for uuid, data in service_data.items()
+    }
 
 
 async def async_get_config_entry_diagnostics(
@@ -73,10 +88,9 @@ async def async_get_config_entry_diagnostics(
                         str(mid): data.hex()
                         for mid, data in service_info.manufacturer_data.items()
                     },
-                    "service_data": {
-                        uuid: data.hex()
-                        for uuid, data in service_info.service_data.items()
-                    },
+                    "service_data": _redacted_service_data(
+                        service_info.service_data
+                    ),
                     "service_uuids": list(service_info.service_uuids),
                 }
                 if service_info

@@ -7,7 +7,7 @@
       "connectable": false
     },
     {
-      "local_name": "KIDDE*",
+      "local_name": "KIDDE SMOKE CO",
       "connectable": false
     }
   ],
@@ -26,5 +26,5 @@
     "custom_components.kidde_homesafe"
   ],
   "requirements": [],
-  "version": "1.0.0"
+  "version": "1.1.0"
 }
