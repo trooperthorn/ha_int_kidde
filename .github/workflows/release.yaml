@@ -45,8 +45,27 @@ jobs:
         run: |
           set -euo pipefail
           DATE="$(date -u +%Y.%m.%d)"
-          LAST_SEQ="$(git tag -l "v${DATE}.*" | sed -E "s/^v${DATE}\.//" | sort -n | tail -1)"
-          NEXT_SEQ=$(( ${LAST_SEQ:-0} + 1 ))
+          LAST_TAG_SEQ="$(git tag -l "v${DATE}.*" | sed -E "s/^v${DATE}\.//" | sort -n | tail -1)"
+          LAST_TAG_SEQ="${LAST_TAG_SEQ:-0}"
+
+          # A run can bump manifest.json and push it to main, then fail before
+          # tagging/publishing (e.g. a later step breaks). Reading only tags
+          # would then recompute the same version and find nothing to commit.
+          # Take the manifest's own sequence for today into account too, so a
+          # partial failure is recovered from instead of colliding.
+          MANIFEST="custom_components/kidde_homesafe/manifest.json"
+          MANIFEST_VERSION="$(jq -r .version "$MANIFEST")"
+          LAST_MANIFEST_SEQ=0
+          if [[ "$MANIFEST_VERSION" == "${DATE}."* ]]; then
+            LAST_MANIFEST_SEQ="${MANIFEST_VERSION#${DATE}.}"
+          fi
+
+          LAST_SEQ="$LAST_TAG_SEQ"
+          if (( LAST_MANIFEST_SEQ > LAST_SEQ )); then
+            LAST_SEQ="$LAST_MANIFEST_SEQ"
+          fi
+
+          NEXT_SEQ=$(( LAST_SEQ + 1 ))
           VERSION="${DATE}.${NEXT_SEQ}"
           TAG="v${VERSION}"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
