@@ -20,18 +20,11 @@ KEY_MODEL = "model"
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class KiddeButtonEntityDescriptionMixin:
-    """Mixin for required keys."""
+@dataclass(frozen=True, kw_only=True)
+class KiddeButtonEntityDescription(ButtonEntityDescription):
+    """Describes Kidde Button entity."""
 
     kidde_command: KiddeCommand
-
-
-@dataclass
-class KiddeButtonEntityDescription(
-    ButtonEntityDescription, KiddeButtonEntityDescriptionMixin
-):
-    """Describes Kidde Button entity."""
 
 
 _BUTTON_DESCRIPTIONS = (

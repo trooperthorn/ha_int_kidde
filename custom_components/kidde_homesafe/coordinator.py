@@ -123,22 +123,24 @@ class KiddeBLECoordinator(PassiveBluetoothDataUpdateCoordinator):
     ) -> None:
         """Handle a Bluetooth advertisement event."""
         previous = self.advertisement
-        if not self._parse(service_info):
-            return
-        current = self.advertisement
-        if (
-            previous is not None
-            and current is not None
-            and previous.status_payload != current.status_payload
-        ):
-            _LOGGER.info(
-                (
-                    "Unmapped Kidde BLE payload changed for device token %s "
-                    "from %s to %s; this is diagnostic protocol data, not a "
-                    "verified alarm or fault"
-                ),
-                diagnostic_token(service_info.address),
-                previous.status_payload_hex,
-                current.status_payload_hex,
-            )
+        if self._parse(service_info):
+            current = self.advertisement
+            if (
+                previous is not None
+                and current is not None
+                and previous.status_payload != current.status_payload
+            ):
+                _LOGGER.info(
+                    (
+                        "Unmapped Kidde BLE payload changed for device token %s "
+                        "from %s to %s; this is diagnostic protocol data, not a "
+                        "verified alarm or fault"
+                    ),
+                    diagnostic_token(service_info.address),
+                    previous.status_payload_hex,
+                    current.status_payload_hex,
+                )
+        # Always feed the base coordinator, even for adv packets that didn't
+        # carry a parseable Kidde payload (e.g. a scan response with only the
+        # name), so last-seen/availability bookkeeping doesn't stall.
         super()._async_handle_bluetooth_event(service_info, change)

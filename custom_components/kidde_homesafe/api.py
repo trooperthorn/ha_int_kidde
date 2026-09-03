@@ -185,7 +185,7 @@ class KiddeClient:
         if get_events:
             event_lists = results[len(device_tasks) :]
             events = _dict_by_ids(
-                [event for sub in event_lists for event in sub["events"]]
+                [event for sub in event_lists for event in sub.get("events", [])]
             )
         return KiddeDataset(locations, devices, events)
 
