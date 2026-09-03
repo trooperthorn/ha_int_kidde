@@ -1,9 +1,4 @@
-# Cuts a GitHub Release from every merge to main. Nobody sets the version or
-# pushes a tag by hand: this workflow computes a calendar version
-# (YYYY.MM.DD.N, N restarting at 1 each day), bumps manifest.json, commits
-# that bump with [skip ci] so it doesn't re-trigger itself, tags the commit,
-# and publishes the release with a HACS-installable zip, a sigstore
-# signature, and checksums.
+# See docs/decisions.md "Releases are cut automatically from every merge to main".
 name: Release
 
 on:
@@ -25,13 +20,19 @@ jobs:
     permissions:
       contents: read
 
+  validate:
+    uses: ./.github/workflows/validate.yaml
+    permissions:
+      contents: read
+
   release:
     if: github.ref == 'refs/heads/main'
-    needs: tests
+    needs: [tests, validate]
     runs-on: ubuntu-latest
     permissions:
       contents: write
       id-token: write
+      attestations: write
     steps:
       - name: Check out main
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -85,9 +86,28 @@ jobs:
           inputs: dist/Kidde-HomeSafe.zip
           release-signing-artifacts: false
 
+      - name: Generate SBOM
+        uses: anchore/sbom-action@006b7ce8314066bdf1765b4500370d40fa6917a3 # v0.24.2
+        with:
+          path: dist/Kidde-HomeSafe.zip
+          format: spdx-json
+          output-file: dist/Kidde-HomeSafe.spdx.json
+          upload-artifact: false
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/Kidde-HomeSafe.zip
+
+      - name: Attest SBOM
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-path: dist/Kidde-HomeSafe.zip
+          sbom-path: dist/Kidde-HomeSafe.spdx.json
+
       - name: Generate release checksums
         working-directory: dist
-        run: sha256sum Kidde-HomeSafe.zip Kidde-HomeSafe.zip.sigstore.json > SHA256SUMS
+        run: sha256sum Kidde-HomeSafe.zip Kidde-HomeSafe.zip.sigstore.json Kidde-HomeSafe.spdx.json > SHA256SUMS
 
       - name: Publish the release
         env:
@@ -103,6 +123,7 @@ jobs:
             --verify-tag \
             dist/Kidde-HomeSafe.zip \
             dist/Kidde-HomeSafe.zip.sigstore.json \
+            dist/Kidde-HomeSafe.spdx.json \
             dist/SHA256SUMS
 
       - name: Publish verification instructions
@@ -115,8 +136,9 @@ jobs:
             echo "Published \`$TAG\`."
             echo
             echo '```bash'
-            echo "gh release download $TAG -R $GITHUB_REPOSITORY -p Kidde-HomeSafe.zip -p SHA256SUMS -p '*.sigstore.json'"
+            echo "gh release download $TAG -R $GITHUB_REPOSITORY -p Kidde-HomeSafe.zip -p SHA256SUMS -p '*.sigstore.json' -p '*.spdx.json'"
             echo 'sha256sum --check SHA256SUMS --ignore-missing'
             echo "sigstore verify github --repository $GITHUB_REPOSITORY --bundle Kidde-HomeSafe.zip.sigstore.json Kidde-HomeSafe.zip"
+            echo "gh attestation verify Kidde-HomeSafe.zip -R $GITHUB_REPOSITORY"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"

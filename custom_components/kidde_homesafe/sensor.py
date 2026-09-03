@@ -44,29 +44,26 @@ LIFE_SENSOR_KEY: Final = "life"
 
 logger = logging.getLogger(__name__)
 
-# --- DETECT SERIES MODEL LOGIC ---
-# Define the set of ALL DETECT series mb_models (46 and 48) for the OR check
+# mb_model values; see docs/protocol.md for the full device model table.
 MB_MODELS_DETECT_SERIES: Final = {48, 46}
 
-# Keys to skip for DETECT models (they return 0 or unhelpful data)
+# batt_volt/battery_voltage read as 0 on DETECT-series devices; see docs/protocol.md.
 _SKIP_SIMPLE_SENSOR_KEYS: Final = {"batt_volt", "battery_voltage"}
 
-# Unit/Name configuration for the 'life' sensor based on mb_model
 LIFE_SENSOR_CONFIG: Final[dict] = {
-    48: { # MB Model 48 (DETECT Smoke/CO)
+    48: {
         "name": "Days to replace",
         "unit": UnitOfTime.DAYS,
     },
-    46: { # MB Model 46 (DETECT Smoke Only)
+    46: {
         "name": "Days to replace",
         "unit": UnitOfTime.DAYS,
     },
     "default": {
-        "name": "Weeks to replace", # Default for older/non-DETECT models
+        "name": "Weeks to replace",
         "unit": UnitOfTime.WEEKS,
     },
 }
-# ---------------------------------
 
 
 _TIMESTAMP_DESCRIPTIONS = (
@@ -104,19 +101,16 @@ _SENSOR_DESCRIPTIONS = (
         name="Smoke Level",
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    # Existing CO sensor for older models
     SensorEntityDescription(
         key="co_level",
         icon="mdi:molecule-co",
         name="CO Level",
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    # NEW CO sensor for DETECT series (co_ppm)
     SensorEntityDescription(
         key="co_ppm",
         icon="mdi:molecule-co",
         name="CO PPM",
-        # FIX: Reverted to CO to fix the AttributeError, as CARBON_MONOXIDE is unavailable.
         device_class=SensorDeviceClass.CO,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=CONCENTRATION_PARTS_PER_MILLION,
@@ -130,7 +124,6 @@ _SENSOR_DESCRIPTIONS = (
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         suggested_display_precision=2,
     ),
-    # NOTE: This is the description for the custom KiddeSensorLifeEntity
     SensorEntityDescription(
         key=LIFE_SENSOR_KEY,
         icon="mdi:calendar-clock",
@@ -291,12 +284,8 @@ async def async_setup_entry(
         return
     sensors: list[SensorEntity] = []
 
-    # --- Find the entity description for 'life' once ---
     life_description = next(
-        (
-            desc for desc in _SENSOR_DESCRIPTIONS 
-            if desc.key == LIFE_SENSOR_KEY
-        ),
+        (desc for desc in _SENSOR_DESCRIPTIONS if desc.key == LIFE_SENSOR_KEY),
         None,
     )
 
@@ -317,27 +306,27 @@ async def async_setup_entry(
                     )
                 )
 
-        # -------------------------------------------------------------
-        # 1. Custom Life Sensor Entity
         if LIFE_SENSOR_KEY in device_data and life_description:
             sensors.append(
                 KiddeSensorLifeEntity(coordinator, device_id, life_description)
             )
-        # -------------------------------------------------------------
 
         for entity_description in _SENSOR_DESCRIPTIONS:
-            # Skip the 'life' sensor from the simple loop, as it's handled by the custom entity
+            # 'life' is handled above by KiddeSensorLifeEntity, which varies
+            # name/unit by mb_model.
             if entity_description.key == LIFE_SENSOR_KEY:
                 continue
 
-            # --- DETECT Series Check for Voltage Sensor Exclusion ---
             if (
-                entity_description.key in _SKIP_SIMPLE_SENSOR_KEYS and 
-                mb_model in MB_MODELS_DETECT_SERIES
+                entity_description.key in _SKIP_SIMPLE_SENSOR_KEYS
+                and mb_model in MB_MODELS_DETECT_SERIES
             ):
-                logger.debug(f"Skipping sensor '{entity_description.key}' because mb_model {mb_model} is DETECT series.")
+                logger.debug(
+                    "Skipping sensor '%s' because mb_model %s is DETECT series.",
+                    entity_description.key,
+                    mb_model,
+                )
                 continue
-            # --- END Check ---
 
             if entity_description.key in device_data:
                 sensors.append(
@@ -385,9 +374,7 @@ class KiddeSensorTimestampEntity(KiddeEntity, SensorEntity):
 
 class KiddeSensorLifeEntity(KiddeEntity, SensorEntity):
     """Custom entity for the 'life' sensor to conditionally adjust units."""
-    
-    # FIX: Remove the conflicting @property definition and move the dynamic logic 
-    # to the __init__ to set the attributes directly.
+
     def __init__(
         self,
         coordinator: KiddeCoordinator,
@@ -395,30 +382,19 @@ class KiddeSensorLifeEntity(KiddeEntity, SensorEntity):
         entity_description: SensorEntityDescription,
     ) -> None:
         """Initialize the custom life sensor."""
-        
-        # 1. Call the base class __init__ FIRST. This successfully sets 
-        #    self.entity_description = entity_description (the base one).
         super().__init__(coordinator, device_id, entity_description)
-
-        # 2. Get the model-specific configuration (Name and Unit).
+        # Set as instance attributes, not properties: the base entity_description
+        # already exposes name/unit as attributes, and these must vary per device.
         config = self._model_config
-        
-        # 3. Dynamically override the entity's Name and Unit attributes 
-        #    using the Home Assistant standard pattern.
-        #    We must override _attr_name and _attr_native_unit_of_measurement
         self._attr_native_unit_of_measurement = config["unit"]
         self._attr_name = config["name"]
-
 
     @property
     def _model_config(self) -> dict:
         """Get the specific config (name/unit) based on the device mb_model."""
-        
-        # Use the mb_model (integer) for the lookup, falling back to "default" if not found
         device_identifier = self.kidde_device.get(KEY_MB_MODEL, "default")
-        
         return LIFE_SENSOR_CONFIG.get(device_identifier, LIFE_SENSOR_CONFIG["default"])
-        
+
     @property
     def native_value(self) -> float | None:
         """Return the native value of the sensor."""
@@ -518,8 +494,6 @@ class KiddeSensorMeasurementEntity(KiddeEntity, SensorEntity):
         else:
             ktype = type(entity_dict)
             if logger.isEnabledFor(logging.DEBUG):
-                # FIX: Corrected a missing closing parenthesis, which was not the current issue, 
-                # but might be a future error point.
                 logger.warning(
                     "Unexpected type [%s], expected state attributes dict for [%s]",
                     ktype,

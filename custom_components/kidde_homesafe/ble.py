@@ -36,7 +36,7 @@ KIDDE_ADDRESS_PREFIX = "84:07:C4:"
 DEVICE_INFORMATION_SERVICE_UUID = "0000180a-0000-1000-8000-00805f9b34fb"
 SYSTEM_ID_UUID = "00002a23-0000-1000-8000-00805f9b34fb"
 
-# Idle-state payload observed on three installed, owner-identified 30CUAR-W units.
+# See docs/BLE_PROTOCOL.md "Manufacturer status payload".
 IDLE_STATUS_PAYLOAD = bytes.fromhex("0240020201")
 EXPECTED_STATUS_PAYLOAD_LENGTH = len(IDLE_STATUS_PAYLOAD)
 
