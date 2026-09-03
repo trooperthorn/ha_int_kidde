@@ -1,0 +1,122 @@
+# Cuts a GitHub Release from every merge to main. Nobody sets the version or
+# pushes a tag by hand: this workflow computes a calendar version
+# (YYYY.MM.DD.N, N restarting at 1 each day), bumps manifest.json, commits
+# that bump with [skip ci] so it doesn't re-trigger itself, tags the commit,
+# and publishes the release with a HACS-installable zip, a sigstore
+# signature, and checksums.
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.repository }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    uses: ./.github/workflows/tests.yaml
+    permissions:
+      contents: read
+
+  release:
+    if: github.ref == 'refs/heads/main'
+    needs: tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Check out main
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Compute the next calendar version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          DATE="$(date -u +%Y.%m.%d)"
+          LAST_SEQ="$(git tag -l "v${DATE}.*" | sed -E "s/^v${DATE}\.//" | sort -n | tail -1)"
+          NEXT_SEQ=$(( ${LAST_SEQ:-0} + 1 ))
+          VERSION="${DATE}.${NEXT_SEQ}"
+          TAG="v${VERSION}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Bump manifest.json and tag the release commit
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          MANIFEST="custom_components/kidde_homesafe/manifest.json"
+          jq --arg v "$VERSION" '.version = $v' "$MANIFEST" > "${MANIFEST}.tmp"
+          mv "${MANIFEST}.tmp" "$MANIFEST"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$MANIFEST"
+          git commit -m "Release ${VERSION} [skip ci]"
+          git tag "$TAG"
+          git push origin HEAD:main
+          git push origin "$TAG"
+
+      - name: Build the HACS zip archive
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cd custom_components/kidde_homesafe
+          zip -r "${GITHUB_WORKSPACE}/dist/Kidde-HomeSafe.zip" ./ -x '*/__pycache__/*'
+
+      # Keyless signing via GitHub's OIDC token; produces
+      # dist/Kidde-HomeSafe.zip.sigstore.json next to the archive.
+      - name: Sign the release archive
+        uses: sigstore/gh-action-sigstore-python@5b79a39c381910c090341a2c9b0bf022c8b387e1 # v3.4.0
+        with:
+          inputs: dist/Kidde-HomeSafe.zip
+          release-signing-artifacts: false
+
+      - name: Generate release checksums
+        working-directory: dist
+        run: sha256sum Kidde-HomeSafe.zip Kidde-HomeSafe.zip.sigstore.json > SHA256SUMS
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target main \
+            --title "$TAG" \
+            --generate-notes \
+            --verify-tag \
+            dist/Kidde-HomeSafe.zip \
+            dist/Kidde-HomeSafe.zip.sigstore.json \
+            dist/SHA256SUMS
+
+      - name: Publish verification instructions
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          {
+            echo '### Release verification'
+            echo
+            echo "Published \`$TAG\`."
+            echo
+            echo '```bash'
+            echo "gh release download $TAG -R $GITHUB_REPOSITORY -p Kidde-HomeSafe.zip -p SHA256SUMS -p '*.sigstore.json'"
+            echo 'sha256sum --check SHA256SUMS --ignore-missing'
+            echo "sigstore verify github --repository $GITHUB_REPOSITORY --bundle Kidde-HomeSafe.zip.sigstore.json Kidde-HomeSafe.zip"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
