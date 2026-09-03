@@ -1,2 +1,5 @@
-/.github/ @snell-evan-itt
-* @snell-evan-itt
+# Security-sensitive runtime and delivery surfaces require owner review.
+/custom_components/kidde_homesafe/ @trooperthorn
+/.github/workflows/ @trooperthorn
+/SECURITY.md @trooperthorn
+* @trooperthorn

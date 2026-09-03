@@ -92,10 +92,6 @@ class KiddeConfigFlow(ConfigFlow, domain=DOMAIN):
             menu_options=["cloud", "pick_bluetooth"],
         )
 
-    # ------------------------------------------------------------------
-    # Cloud (Kidde HomeSafe account)
-    # ------------------------------------------------------------------
-
     async def _async_try_login(
         self, email: str, password: str, errors: dict[str, str]
     ) -> KiddeClient | None:
@@ -160,7 +156,7 @@ class KiddeConfigFlow(ConfigFlow, domain=DOMAIN):
                 email, user_input[CONF_PASSWORD], errors
             )
             if client is not None:
-                return self.async_update_reload_and_abort(
+                return self.async_update_and_abort(
                     reauth_entry,
                     unique_id=unique_id,
                     data_updates={
@@ -199,7 +195,7 @@ class KiddeConfigFlow(ConfigFlow, domain=DOMAIN):
                 email, user_input[CONF_PASSWORD], errors
             )
             if client is not None:
-                return self.async_update_reload_and_abort(
+                return self.async_update_and_abort(
                     reconfigure_entry,
                     unique_id=unique_id,
                     data_updates={
@@ -216,10 +212,6 @@ class KiddeConfigFlow(ConfigFlow, domain=DOMAIN):
             ),
             errors=errors,
         )
-
-    # ------------------------------------------------------------------
-    # Local Bluetooth
-    # ------------------------------------------------------------------
 
     async def async_step_bluetooth(
         self, discovery_info: BluetoothServiceInfoBleak
@@ -317,10 +309,6 @@ class KiddeConfigFlow(ConfigFlow, domain=DOMAIN):
                 }
             ),
         )
-
-    # ------------------------------------------------------------------
-    # Options
-    # ------------------------------------------------------------------
 
     @staticmethod
     @callback

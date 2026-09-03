@@ -76,10 +76,7 @@ class KiddeCoordinator(DataUpdateCoordinator[KiddeDataset]):
 class KiddeBLECoordinator(PassiveBluetoothDataUpdateCoordinator):
     """Coordinator receiving passive BLE advertisements from a Kidde alarm.
 
-    Updates arrive as soon as an advertisement is relayed by any local
-    Bluetooth adapter or ESPHome/Shelly Bluetooth proxy — no polling and
-    no connection to the alarm, so latency is the advertising interval
-    of the alarm itself (a few seconds).
+    See docs/design.md for why this is push-only with no polling fallback.
     """
 
     config_entry: KiddeConfigEntry

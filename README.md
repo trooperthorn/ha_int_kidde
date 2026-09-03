@@ -121,6 +121,11 @@ field model carrying source, timestamp, freshness, and confidence. Transport
 adapters must produce that model rather than creating entities directly. Raw
 or provisional protocol bytes are never eligible for smoke/CO entities.
 
+## Documentation
+
+See [docs/README.md](docs/README.md) for protocol facts, architecture
+rationale, and dated design decisions.
+
 ## Credits
 
 - Cloud API originally mapped by
