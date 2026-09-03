@@ -21,19 +21,12 @@ KEY_MODEL = "model"
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class KiddeSwitchEntityDescriptionMixin:
-    """Mixin for required keys."""
+@dataclass(frozen=True, kw_only=True)
+class KiddeSwitchEntityDescription(SwitchEntityDescription):
+    """Describes Kidde Switch entity."""
 
     kidde_command_on: KiddeCommand
     kidde_command_off: KiddeCommand
-
-
-@dataclass
-class KiddeSwitchEntityDescription(
-    SwitchEntityDescription, KiddeSwitchEntityDescriptionMixin
-):
-    """Describes Kidde Switch entity."""
 
 
 _SWITCH_DESCRIPTIONS = (
