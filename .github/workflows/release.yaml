@@ -86,10 +86,12 @@ jobs:
           inputs: dist/Kidde-HomeSafe.zip
           release-signing-artifacts: false
 
+      # sbom-action always scans `path` as a directory; a zip archive is not
+      # a directory, so this scans the pre-zip source tree instead.
       - name: Generate SBOM
         uses: anchore/sbom-action@006b7ce8314066bdf1765b4500370d40fa6917a3 # v0.24.2
         with:
-          path: dist/Kidde-HomeSafe.zip
+          path: custom_components/kidde_homesafe
           format: spdx-json
           output-file: dist/Kidde-HomeSafe.spdx.json
           upload-artifact: false
