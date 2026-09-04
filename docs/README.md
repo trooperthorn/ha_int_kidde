@@ -9,3 +9,5 @@
   and cross-transport entity identity.
 - [decisions.md](decisions.md): dated decisions with the alternative
   considered and why.
+- [operations.md](operations.md): the test gate, the release path (signing,
+  SBOM, attestation), its GitHub App, branch protection, and line endings.

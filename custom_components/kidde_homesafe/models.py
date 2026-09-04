@@ -6,10 +6,11 @@ reconciliation rules can be tested independently of Home Assistant.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any, Iterable, Mapping
+from typing import Any
 
 
 class DataSource(StrEnum):

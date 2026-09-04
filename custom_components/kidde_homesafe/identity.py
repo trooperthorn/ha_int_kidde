@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import hashlib
 import re
-
+from dataclasses import dataclass
 
 KIDDE_BLE_NAME = "KIDDE SMOKE CO"
 KIDDE_OUI = "84:07:C4"

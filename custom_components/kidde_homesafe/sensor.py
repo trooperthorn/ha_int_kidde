@@ -13,14 +13,12 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.const import (
-    PERCENTAGE,
     SIGNAL_STRENGTH_DECIBELS,
     SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
     EntityCategory,
     UnitOfElectricPotential,
     UnitOfPressure,
-    CONCENTRATION_PARTS_PER_BILLION,
-    CONCENTRATION_PARTS_PER_MILLION,
+    UnitOfRatio,
     UnitOfTemperature,
     UnitOfTime,
 )
@@ -113,7 +111,7 @@ _SENSOR_DESCRIPTIONS = (
         name="CO PPM",
         device_class=SensorDeviceClass.CO,
         state_class=SensorStateClass.MEASUREMENT,
-        native_unit_of_measurement=CONCENTRATION_PARTS_PER_MILLION,
+        native_unit_of_measurement=UnitOfRatio.PARTS_PER_MILLION,
     ),
     SensorEntityDescription(
         key="batt_volt",
@@ -405,7 +403,7 @@ class KiddeSensorEntity(KiddeEntity, SensorEntity):
     """Sensor for Kidde HomeSafe."""
 
     @property
-    def native_value(self) -> str | None | float | int:
+    def native_value(self) -> str | float | int | None:
         """Return the native value of the sensor."""
         value = self.kidde_device.get(self.entity_description.key)
         dtype = type(value)
@@ -466,13 +464,13 @@ class KiddeSensorMeasurementEntity(KiddeEntity, SensorEntity):
             case "F":
                 return UnitOfTemperature.FAHRENHEIT
             case "%RH":
-                return PERCENTAGE
+                return UnitOfRatio.PERCENTAGE
             case "HPA":
                 return UnitOfPressure.PA
             case "PPB":
-                return CONCENTRATION_PARTS_PER_BILLION
+                return UnitOfRatio.PARTS_PER_BILLION
             case "PPM":
-                return CONCENTRATION_PARTS_PER_MILLION
+                return UnitOfRatio.PARTS_PER_MILLION
             case "V":
                 return UnitOfElectricPotential.VOLT
             case _:

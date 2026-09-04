@@ -8,8 +8,8 @@ from typing import Any
 from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.core import HomeAssistant
 
-from .coordinator import KiddeBLECoordinator, KiddeConfigEntry
 from .ble import DEVICE_INFORMATION_SERVICE_UUID, SYSTEM_ID_UUID
+from .coordinator import KiddeBLECoordinator, KiddeConfigEntry
 
 TO_REDACT = {
     "cookies",

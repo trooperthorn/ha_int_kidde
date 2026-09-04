@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import importlib.util
-from pathlib import Path
 import sys
-
+from pathlib import Path
 
 _PATH = Path(__file__).parents[1] / "tools" / "kidde_capture.py"
 _spec = importlib.util.spec_from_file_location("kidde_capture", _PATH)

@@ -10,7 +10,7 @@ BLE advertisement data; for that, see [BLE_PROTOCOL.md](BLE_PROTOCOL.md).
 | ---------- | ------- | -------- |
 | `48` | DETECT-series Smoke/CO alarm | Verified against a live device |
 | `46` | DETECT-series Smoke-only alarm | Verified against a live device |
-| anything else, or missing | Older or non-DETECT model | Unverified — no live device confirms an exhaustive list |
+| anything else, or missing | Older or non-DETECT model | Unverified, no live device confirms an exhaustive list |
 
 `sensor.py` collects `48` and `46` into `MB_MODELS_DETECT_SERIES` and uses
 that set for two things:

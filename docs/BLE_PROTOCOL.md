@@ -36,11 +36,11 @@ All observed units broadcast the same payload in the idle state:
 ```
 
 **Field-verified (2026-08-20):** this payload was confirmed against live
-alarms with fire, smoke, and carbon monoxide all inactive — it is the
+alarms with fire, smoke, and carbon monoxide all inactive, it is the
 authoritative "all clear" pattern the integration's *Non-idle status*
 sensor compares against.
 
-Byte meanings are **not yet mapped** — mapping them requires captures
+Byte meanings are **not yet mapped**, mapping them requires captures
 taken while an alarm is testing, hushed, alarming (smoke/CO), or
 reporting low battery / end-of-life. The integration is built to make
 those captures easy:

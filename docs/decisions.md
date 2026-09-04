@@ -12,11 +12,13 @@ the carbon monoxide device class is `SensorDeviceClass.CO` (value
 
 ## Releases are cut automatically from every merge to main
 
-The release workflow (`.github/workflows/release.yaml`) computes a calendar
-version (`YYYY.MM.DD.N`, `N` restarting at 1 each day), bumps
-`manifest.json`, commits that bump with `[skip ci]` so it does not
-re-trigger itself, tags the commit, and publishes the release with a
-HACS-installable zip, a sigstore signature, and checksums. Nobody sets the
-version or pushes a tag by hand. This matches the release-and-security
-baseline used across the trooperthorn Home Assistant repositories: a merge
-to `main` is the only release path.
+A merge to `main` is the only release path. `Release` publishes the version already
+written in `manifest.json`, validated through `.release.json`, with the signed archive,
+SBOM, checksums, and attestations; `Prepare release` writes the next CalVer into the
+manifest in a reviewed, auto-merged PR when release-bearing files changed. `operations.md`
+has the full path. Nobody sets the version or pushes a tag by hand.
+
+Rejected on 2026-09-04: the previous flow, where the release job computed the next
+version, committed the manifest bump straight to `main` with `[skip ci]`, and tagged it.
+That flow needed a partial-failure recovery rule (a bump pushed but never tagged), could
+not coexist with branch protection, and put unreviewed bytes on the default branch.
