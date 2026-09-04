@@ -9,14 +9,14 @@ identifiers.
 from __future__ import annotations
 
 import argparse
-from datetime import UTC, datetime
 import hashlib
 import hmac
 import json
-from pathlib import Path
 import re
-from typing import Any, Mapping
-
+from collections.abc import Mapping
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
 
 IDENTITY_SERVICE_UUIDS = {
     "0000180a-0000-1000-8000-00805f9b34fb",

@@ -4,7 +4,7 @@
 # Kidde HomeSafe Integration
 
 Home Assistant integration for Kidde smoke, fire, and carbon monoxide
-alarms — with **two connection paths**:
+alarms, with **two connection paths**:
 
 | Path | Devices | Data | Latency |
 | ---- | ------- | ---- | ------- |
@@ -26,7 +26,7 @@ Cloud (verified unless noted):
 
 - Smoke + CO Alarm with Indoor Air Quality Monitor (**P4010ACSCOAQ-WF**)
 - Smoke Alarm with Indoor Air Quality Monitor (**P4010ACSAQ-WF**)
-- Smoke + CO Alarm with smart features (**P4010ACSCO-WF**) — unverified
+- Smoke + CO Alarm with smart features (**P4010ACSCO-WF**), unverified
 - Smoke Alarm with smart features (**P4010ACS-WF**)
 - Water Leak + Freeze Detector (**60WLDR-W**)
 - CO Alarm with Indoor Air Quality Monitor (**KN-COP-DP-10YL-AQ-WF**)
@@ -50,7 +50,7 @@ Local Bluetooth (experimental):
 Choose **Kidde HomeSafe account (cloud)** and sign in with the account
 from the Kidde app. The polling interval is adjustable afterwards via the
 entry's **Configure** button. Re-authentication and reconfiguration flows
-are built in — if the Kidde cloud invalidates your session you will be
+are built in, if the Kidde cloud invalidates your session you will be
 prompted rather than the integration silently failing.
 
 > [!CAUTION]
@@ -69,7 +69,7 @@ Each alarm provides:
 
 - **Bluetooth signal strength** (RSSI) sensor
 - **Status payload** diagnostic sensor (live hex broadcast)
-- **Status broadcast** diagnostic event — fires on a raw payload change for
+- **Status broadcast** diagnostic event, fires on a raw payload change for
   protocol capture; it is not a smoke, CO, or fault signal
 - Locally correlated identity; exported diagnostics redact serial, MAC, and
   System ID values
@@ -90,12 +90,12 @@ plus **Test**, **Hush**, and **Identify** controls.
 Importable automation blueprints ship with the repository:
 
 - [Smoke/CO Emergency Response](blueprints/automation/kidde_homesafe/smoke_co_emergency_response.yaml)
-  — notify occupants, light the evacuation path, and run extra actions.
+  - notify occupants, light the evacuation path, and run extra actions.
   The extra-actions hook is designed for pairing with other
   integrations, e.g. **UniFi Protect** (`camera.snapshot`, recording
   mode) or an **ELK-M1** panel (announcements, tasks).
 - [BLE Protocol Capture](blueprints/automation/kidde_homesafe/ble_status_capture.yaml)
-  — record an unmapped Bluetooth payload change for controlled protocol
+  - record an unmapped Bluetooth payload change for controlled protocol
   research. Do not use it for life-safety notification.
 
 Import via **Settings → Automations & Scenes → Blueprints → Import

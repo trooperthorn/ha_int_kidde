@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import importlib.util
-from pathlib import Path
 import sys
 import types
-
+from pathlib import Path
 
 _ROOT = Path(__file__).parents[1] / "custom_components" / "kidde_homesafe"
 

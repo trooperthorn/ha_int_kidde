@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
 import importlib.util
-from pathlib import Path
 import sys
-
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 _PATH = Path(__file__).parents[1] / "custom_components" / "kidde_homesafe" / "models.py"
 _spec = importlib.util.spec_from_file_location("kidde_models", _PATH)

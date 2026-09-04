@@ -15,7 +15,6 @@ from dataclasses import dataclass
 from ..models import DataSource, FieldObservation
 from .base import KiddeTransport, TransportCapabilities
 
-
 DEFAULT_AYLA_LAN_PORT = 10275
 
 

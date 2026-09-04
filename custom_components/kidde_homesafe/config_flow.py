@@ -103,7 +103,7 @@ class KiddeConfigFlow(ConfigFlow, domain=DOMAIN):
             errors["base"] = "invalid_auth"
         except KiddeClientCommunicationError:
             errors["base"] = "cannot_connect"
-        except Exception:  # noqa: BLE001
+        except Exception:
             _LOGGER.exception("Unexpected error logging in to Kidde cloud")
             errors["base"] = "unknown"
         return None
