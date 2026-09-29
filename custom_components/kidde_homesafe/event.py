@@ -52,6 +52,18 @@ class KiddeBLEEventEntity(KiddeBLEEntity, EventEntity):
             advertisement.status_payload_hex if advertisement else None
         )
 
+    async def async_added_to_hass(self) -> None:
+        """Resume from the last payload an event reported.
+
+        Without this, a change that happens while Home Assistant is restarting
+        is adopted silently as the new baseline and never reported.
+        """
+        await super().async_added_to_hass()
+        if (last := await self.async_get_last_event_data()) is not None and (
+            payload := (last.last_event_attributes or {}).get("payload")
+        ):
+            self._last_payload = payload
+
     @callback
     def _handle_coordinator_update(self) -> None:
         """Fire an event when the status payload changes."""
@@ -59,6 +71,10 @@ class KiddeBLEEventEntity(KiddeBLEEntity, EventEntity):
         if advertisement is None:
             return
         payload = advertisement.status_payload_hex
+        if payload is None:
+            # A scan response or truncated packet without manufacturer data
+            # says nothing about the status; it is not a change.
+            return
         if self._last_payload is None:
             # No baseline (e.g. first advertisement after a restart with
             # no cached history) - adopt silently instead of firing.

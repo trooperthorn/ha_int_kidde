@@ -141,3 +141,28 @@ class KiddeBLECoordinator(PassiveBluetoothDataUpdateCoordinator):
         # carry a parseable Kidde payload (e.g. a scan response with only the
         # name), so last-seen/availability bookkeeping doesn't stall.
         super()._async_handle_bluetooth_event(service_info, change)
+
+
+@callback
+def async_ble_cloud_link(hass: HomeAssistant, serial_number: str | None) -> bool | None:
+    """Return the cloud link reported over BLE by the alarm with this serial.
+
+    None when no loaded Bluetooth entry tracks that serial, the alarm has not
+    been heard recently, or its payload does not carry a mapped link state.
+    """
+    if not serial_number:
+        return None
+    wanted = serial_number.strip().upper()
+    for entry in hass.config_entries.async_loaded_entries(DOMAIN):
+        coordinator = entry.runtime_data
+        if not isinstance(coordinator, KiddeBLECoordinator):
+            continue
+        advertisement = coordinator.advertisement
+        if (
+            advertisement is None
+            or not coordinator.available
+            or (advertisement.serial_number or "").strip().upper() != wanted
+        ):
+            continue
+        return advertisement.cloud_link
+    return None

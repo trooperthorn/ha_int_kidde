@@ -148,3 +148,36 @@ def test_undecodable_serial_returns_none() -> None:
     )
     assert adv is not None
     assert adv.serial_number is None
+
+
+# Payloads broadcast by four live alarms across the internet outages of
+# 2026-09-24 to 2026-09-28; see docs/BLE_PROTOCOL.md "Cloud link byte".
+@pytest.mark.parametrize(
+    ("payload", "cloud_link", "classification"),
+    [
+        ("0240020201", True, "verified_idle_fixture"),
+        ("0240020501", False, "verified_cloud_disconnected"),
+        ("0240020301", None, "unmapped"),
+        ("0241020501", None, "unmapped"),
+        ("02400205", None, "malformed"),
+    ],
+)
+def test_cloud_link_byte(payload: str, cloud_link: bool | None, classification: str) -> None:
+    address, serial, system_id = CAPTURES[0]
+    adv = ble.parse_advertisement(
+        address,
+        "KIDDE SMOKE CO",
+        -60,
+        {ble.KIDDE_MANUFACTURER_ID: bytes.fromhex(payload)},
+        {DIS_UUID: serial.encode(), SYSTEM_ID_UUID: bytes.fromhex(system_id.replace(":", ""))},
+    )
+    assert adv is not None
+    assert adv.cloud_link is cloud_link
+    assert adv.status_payload_classification == classification
+
+
+def test_cloud_link_missing_payload() -> None:
+    address, serial, _ = CAPTURES[0]
+    adv = ble.parse_advertisement(address, "KIDDE SMOKE CO", -60, {}, {DIS_UUID: serial.encode()})
+    assert adv is not None
+    assert adv.cloud_link is None

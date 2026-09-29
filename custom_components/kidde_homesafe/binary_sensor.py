@@ -10,11 +10,11 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntityDescription,
 )
 from homeassistant.const import EntityCategory
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .coordinator import KiddeConfigEntry
-from .entity import KiddeEntity
+from .coordinator import KiddeBLECoordinator, KiddeConfigEntry
+from .entity import KiddeBLEEntity, KiddeEntity
 
 PARALLEL_UPDATES = 0
 
@@ -164,11 +164,26 @@ _BATTERY_SENSOR_DESCRIPTIONS = (
 )
 
 
+_BLE_CLOUD_LINK_DESCRIPTION = BinarySensorEntityDescription(
+    key="cloud_link",
+    translation_key="cloud_link",
+    device_class=BinarySensorDeviceClass.CONNECTIVITY,
+    entity_category=EntityCategory.DIAGNOSTIC,
+)
+
+
 async def async_setup_entry(
-    hass: HomeAssistant, entry: KiddeConfigEntry, async_add_devices: AddEntitiesCallback
+    hass: HomeAssistant,
+    entry: KiddeConfigEntry,
+    async_add_devices: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the binary sensor platform."""
     coordinator = entry.runtime_data
+    if isinstance(coordinator, KiddeBLECoordinator):
+        async_add_devices(
+            [KiddeBLECloudLinkEntity(coordinator, _BLE_CLOUD_LINK_DESCRIPTION)]
+        )
+        return
     sensors: list[BinarySensorEntity] = []
 
     for device_id, device_data in coordinator.data.devices.items():
@@ -213,12 +228,17 @@ class KiddeBinarySensorEntity(KiddeEntity, BinarySensorEntity):
 
 
 class KiddeInverseBinarySensorEntity(KiddeEntity, BinarySensorEntity):
-    """Binary sensor for Kidde HomeSafe."""
+    """Online sensor: on when the cloud does not report the device offline."""
+
+    _available_when_offline = True
 
     @property
     def is_on(self) -> bool | None:
         """Return the value of the binary sensor."""
-        return not self.kidde_device.get(self.entity_description.key)
+        value = self.kidde_device.get(self.entity_description.key)
+        if value is None:
+            return None
+        return not value
 
 
 class KiddeBatteryStateSensorEntity(KiddeEntity, BinarySensorEntity):
@@ -227,4 +247,27 @@ class KiddeBatteryStateSensorEntity(KiddeEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         """Return the value of the binary sensor."""
-        return self.kidde_device.get(self.entity_description.key) not in ("Good", "ok")
+        value = self.kidde_device.get(self.entity_description.key)
+        if value is None:
+            return None
+        return value not in ("Good", "ok")
+
+
+class KiddeBLECloudLinkEntity(KiddeBLEEntity, BinarySensorEntity):
+    """Cloud link as reported by the alarm in its BLE broadcast.
+
+    Works during an internet outage, when the cloud entry cannot report it.
+    """
+
+    coordinator: KiddeBLECoordinator
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle an updated advertisement."""
+        self.async_write_ha_state()
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return True while the alarm reports a working cloud link."""
+        advertisement = self.coordinator.advertisement
+        return advertisement.cloud_link if advertisement else None

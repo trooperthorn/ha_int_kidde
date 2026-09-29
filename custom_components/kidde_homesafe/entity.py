@@ -15,7 +15,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import KiddeClientError, KiddeCommand
 from .const import DOMAIN, MANUFACTURER
-from .coordinator import KiddeBLECoordinator, KiddeCoordinator
+from .coordinator import KiddeBLECoordinator, KiddeCoordinator, async_ble_cloud_link
 from .identity import KiddeIdentity, friendly_ble_name
 
 KEY_MODEL = "model"
@@ -35,6 +35,9 @@ class KiddeEntity(CoordinatorEntity[KiddeCoordinator]):
     """Entity base class for cloud-connected Kidde devices."""
 
     _attr_has_entity_name = True
+    # Entities that describe the link itself stay available while the alarm is
+    # offline; everything else would otherwise show the cloud's cached values.
+    _available_when_offline = False
 
     def __init__(
         self,
@@ -54,12 +57,30 @@ class KiddeEntity(CoordinatorEntity[KiddeCoordinator]):
 
     @property
     def available(self) -> bool:
-        """Return whether the device is still present in the dataset."""
-        return (
+        """Return whether current data exists for this device.
+
+        An alarm the cloud marks offline, or that reports a lost cloud link over
+        BLE, still has its last smoke/CO values in the cloud response. Showing
+        them would read as "clear" during an outage, so the entity is
+        unavailable instead.
+        """
+        if not (
             super().available
             and self.coordinator.data is not None
             and self.coordinator.data.devices is not None
             and self.device_id in self.coordinator.data.devices
+        ):
+            return False
+        return self._available_when_offline or not self.reported_offline
+
+    @property
+    def reported_offline(self) -> bool:
+        """Whether the cloud or the alarm's own BLE broadcast says it is offline."""
+        device = self.kidde_device
+        if device.get("offline") is True:
+            return True
+        return (
+            async_ble_cloud_link(self.hass, device.get("serial_number")) is False
         )
 
     @property
