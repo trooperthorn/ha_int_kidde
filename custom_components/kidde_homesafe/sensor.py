@@ -524,7 +524,7 @@ class KiddeBLESensorEntity(KiddeBLEEntity, SensorEntity):
         return None
 
     @property
-    def extra_state_attributes(self) -> dict[str, str | bool] | None:
+    def extra_state_attributes(self) -> dict[str, str | bool | None] | None:
         """Expose confidence metadata without assigning alarm semantics."""
         if self.entity_description.key != "status_payload":
             return None
@@ -537,5 +537,7 @@ class KiddeBLESensorEntity(KiddeBLEEntity, SensorEntity):
             "identity_correlation_verified": (
                 advertisement.identity_correlation_verified
             ),
-            "semantics": "unmapped",
+            "cloud_link": advertisement.cloud_link,
+            # Only the cloud link byte is mapped; nothing here is smoke or CO.
+            "semantics": "cloud_link_only",
         }

@@ -40,6 +40,13 @@ SYSTEM_ID_UUID = "00002a23-0000-1000-8000-00805f9b34fb"
 IDLE_STATUS_PAYLOAD = bytes.fromhex("0240020201")
 EXPECTED_STATUS_PAYLOAD_LENGTH = len(IDLE_STATUS_PAYLOAD)
 
+# See docs/BLE_PROTOCOL.md "Cloud link byte". Only byte 3 is mapped, and only
+# when the other four bytes equal the idle fixture.
+CLOUD_LINK_BYTE_INDEX = 3
+CLOUD_LINK_CONNECTED = 0x02
+CLOUD_LINK_DISCONNECTED = 0x05
+CLOUD_DISCONNECTED_PAYLOAD = bytes.fromhex("0240020501")
+
 
 @dataclass(frozen=True)
 class KiddeBLEAdvertisement:
@@ -74,6 +81,25 @@ class KiddeBLEAdvertisement:
         return self.status_payload == IDLE_STATUS_PAYLOAD
 
     @property
+    def cloud_link(self) -> bool | None:
+        """Whether the alarm reports a working link to the Kidde cloud.
+
+        True for byte 3 = 0x02, False for 0x05, None for anything else,
+        including payloads whose other bytes differ from the idle fixture.
+        """
+        payload = self.status_payload
+        if payload is None or len(payload) != EXPECTED_STATUS_PAYLOAD_LENGTH:
+            return None
+        i = CLOUD_LINK_BYTE_INDEX
+        if payload[:i] + payload[i + 1 :] != IDLE_STATUS_PAYLOAD[:i] + IDLE_STATUS_PAYLOAD[i + 1 :]:
+            return None
+        if payload[i] == CLOUD_LINK_CONNECTED:
+            return True
+        if payload[i] == CLOUD_LINK_DISCONNECTED:
+            return False
+        return None
+
+    @property
     def status_payload_classification(self) -> str:
         """Classify protocol confidence without inventing state semantics."""
         if self.status_payload is None:
@@ -82,6 +108,8 @@ class KiddeBLEAdvertisement:
             return "malformed"
         if self.status_payload == IDLE_STATUS_PAYLOAD:
             return "verified_idle_fixture"
+        if self.status_payload == CLOUD_DISCONNECTED_PAYLOAD:
+            return "verified_cloud_disconnected"
         return "unmapped"
 
 

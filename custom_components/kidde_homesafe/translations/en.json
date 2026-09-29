@@ -78,6 +78,11 @@
     }
   },
   "entity": {
+    "binary_sensor": {
+      "cloud_link": {
+        "name": "Cloud link"
+      }
+    },
     "sensor": {
       "rssi": {
         "name": "Bluetooth signal strength"
